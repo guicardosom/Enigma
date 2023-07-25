@@ -17,14 +17,22 @@ public class EnigmaModel
 	/* Private instance variables */
 
   private ArrayList<EnigmaView> views;
+  
   private HashMap<String, Boolean> keys;
   private HashMap<String, Boolean> lamps;
+  
+  private EnigmaRotor[] rotors = new EnigmaRotor[3];
 
     public EnigmaModel() 
     {
         views = new ArrayList<EnigmaView>();
+        
         keys = populateKeysMap();
         lamps = populateKeysMap();
+        
+        rotors[0] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[0]);
+        rotors[1] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[1]);
+        rotors[2] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[2]);
     }
 
 /**
@@ -73,7 +81,7 @@ public class EnigmaModel
     }
 
 /**
- * Returns the letter visible through the rotor at the specified inded.
+ * Returns the letter visible through the rotor at the specified index.
  *
  * @param index The index of the rotor (0-2)
  * @return The letter visible in the indicated rotor
@@ -81,7 +89,11 @@ public class EnigmaModel
 
     public String getRotorLetter(int index)
     {
-        return "A";//place holder code to turn off compile error 
+        int offset = rotors[index].getOffset();
+        String permutation = rotors[index].getPermutation();
+        String letter = permutation.substring(offset, (offset+1));
+        
+        return letter;
     }
 
 /**
@@ -119,7 +131,7 @@ public class EnigmaModel
 
     public void rotorClicked(int index) 
     {
-        // Write the code to run when the specified rotor is clicked
+        rotors[index].advance();
     }
     
 /**
@@ -147,3 +159,48 @@ public class EnigmaModel
     }
   
 }//end class EnigmaModel
+
+class EnigmaRotor 
+{
+	String permutation;
+	int offset;
+	
+/**
+ * Initializes an EnigmaRotor object.
+ *
+ * @param rotorPermutation The permutation string used for encoding/decoding of the rotor.
+ */
+	public EnigmaRotor(String rotorPermutation)
+	{
+		permutation = rotorPermutation;
+		offset = 0;
+	}
+	
+/**
+ * Returns the rotor's offset value.
+ */
+	public int getOffset()
+	{
+		return offset;
+	}
+	
+/**
+ * Returns the rotor's permutation value;
+ */
+	public String getPermutation()
+	{
+		return permutation;
+	}
+	
+/**
+ * Advances the rotor by one. 
+ */
+	public void advance()
+	{
+		offset++;
+		
+		if (offset > 26)
+			offset = 0;
+	}
+}
+
