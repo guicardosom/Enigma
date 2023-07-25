@@ -18,11 +18,13 @@ public class EnigmaModel
 
   private ArrayList<EnigmaView> views;
   private HashMap<String, Boolean> keys;
+  private HashMap<String, Boolean> lamps;
 
     public EnigmaModel() 
     {
         views = new ArrayList<EnigmaView>();
         keys = populateKeysMap();
+        lamps = populateKeysMap();
     }
 
 /**
@@ -67,7 +69,7 @@ public class EnigmaModel
 
     public boolean isLampOn(String letter) 
     {
-        return false;//place holder code to turn off compile error 
+    	return lamps.get(letter);
     }
 
 /**
@@ -91,6 +93,7 @@ public class EnigmaModel
     public void keyPressed(String key)
     {
         keys.put(key, true);
+        lamps.put(key, true);
         this.update();
     }
 
@@ -103,6 +106,7 @@ public class EnigmaModel
     public void keyReleased(String key)
     {
     	keys.put(key, false);
+    	lamps.put(key, false);
     	this.update();
     }
 
