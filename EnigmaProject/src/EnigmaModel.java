@@ -14,25 +14,32 @@ import java.util.HashMap;
 
 public class EnigmaModel 
 {
+	/* Public instance variables */
+	public static FileManager fileManager;
+	
 	/* Private instance variables */
-
-  private ArrayList<EnigmaView> views;
+    private ArrayList<EnigmaView> views;
   
-  private HashMap<String, Boolean> keys;
-  private HashMap<String, Boolean> lamps;
+    private HashMap<String, Boolean> keys;
+    private HashMap<String, Boolean> lamps;
   
-  private EnigmaRotor[] rotors = new EnigmaRotor[3];
+    private EnigmaRotor[] rotors = new EnigmaRotor[3];
+    private EnigmaRotor reflector;
 
     public EnigmaModel() 
     {
+    	fileManager = FileManager.getInstance("./encryption.txt");
+
         views = new ArrayList<EnigmaView>();
         
         keys = populateKeysMap();
         lamps = populateKeysMap();
         
-        rotors[0] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[0]);
-        rotors[1] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[1]);
-        rotors[2] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[2]);
+        rotors[0] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[0], invertKey(EnigmaConstants.ROTOR_PERMUTATIONS[0]));
+        rotors[1] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[1], invertKey(EnigmaConstants.ROTOR_PERMUTATIONS[1]));
+        rotors[2] = new EnigmaRotor(EnigmaConstants.ROTOR_PERMUTATIONS[2], invertKey(EnigmaConstants.ROTOR_PERMUTATIONS[2]));
+        
+        reflector = new EnigmaRotor(EnigmaConstants.REFLECTOR_PERMUTATION, invertKey(EnigmaConstants.REFLECTOR_PERMUTATION));
     }
 
 /**
@@ -90,9 +97,8 @@ public class EnigmaModel
     public String getRotorLetter(int index)
     {
         int offset = rotors[index].getOffset();
-        String permutation = rotors[index].getPermutation();
-        String letter = permutation.substring(offset, (offset+1));
-        
+        String letter = Character.toString(EnigmaConstants.ALPHABET.charAt(offset));
+                
         return letter;
     }
 
@@ -104,8 +110,37 @@ public class EnigmaModel
 
     public void keyPressed(String key)
     {
+        rotorClicked();
+        fileManager.buildDecryptedContent(key);
         keys.put(key, true);
-        lamps.put(key, true);
+        
+        int keyIndex = EnigmaConstants.ALPHABET.indexOf(key);
+        
+        for (int i = 2; i >= 0; i--)
+        {
+        	//cross rotors from right to left
+            keyIndex = rotors[i].applyPermutation(keyIndex, 
+							            		  rotors[i].getR2LPermutation(), 
+							            		  rotors[i].getOffset());
+        }
+        
+        //reverse through the reflector
+        keyIndex = reflector.applyPermutation(keyIndex, 
+											  reflector.getR2LPermutation(), 
+											  0);
+        
+        for (int i = 0; i <= 2; i++)
+        {
+        	//cross rotors from left to right
+            keyIndex = rotors[i].applyPermutation(keyIndex, 
+							            		  rotors[i].getL2RPermutation(), 
+							            		  rotors[i].getOffset());
+        }
+
+    	String letter = Character.toString(EnigmaConstants.ALPHABET.charAt(keyIndex));
+    	fileManager.buildEncryptedContent(letter);
+        lamps.put(letter, true);
+                
         this.update();
     }
 
@@ -118,7 +153,33 @@ public class EnigmaModel
     public void keyReleased(String key)
     {
     	keys.put(key, false);
-    	lamps.put(key, false);
+    	
+        int keyIndex = EnigmaConstants.ALPHABET.indexOf(key);
+
+    	for (int i = 2; i >= 0; i--)
+        {
+        	//cross rotors from right to left
+            keyIndex = rotors[i].applyPermutation(keyIndex, 
+							            		  rotors[i].getR2LPermutation(), 
+							            		  rotors[i].getOffset());
+        }
+        
+        //reverse through the reflector
+        keyIndex = reflector.applyPermutation(keyIndex, 
+											  reflector.getR2LPermutation(), 
+											  0);
+        
+        for (int i = 0; i <= 2; i++)
+        {
+        	//cross rotors from left to right
+            keyIndex = rotors[i].applyPermutation(keyIndex, 
+							            		  rotors[i].getL2RPermutation(), 
+							            		  rotors[i].getOffset());
+        }
+     
+    	String letter = Character.toString(EnigmaConstants.ALPHABET.charAt(keyIndex));
+    	lamps.put(letter, false);
+    	    	     
     	this.update();
     }
 
@@ -129,10 +190,41 @@ public class EnigmaModel
  * @param index The index of the rotor that was clicked
  */
 
-    public void rotorClicked(int index) 
+    public void rotorClicked() 
     {
-        rotors[index].advance();
+    	EnigmaRotor fastRotor = rotors[2];
+        EnigmaRotor mediumRotor = rotors[1];
+        EnigmaRotor slowRotor = rotors[0];
+
+        boolean carryMedium = fastRotor.advance();
+        if (carryMedium) {
+            boolean carrySlow = mediumRotor.advance();
+            if (carrySlow) {
+                slowRotor.advance();
+            }
+        }
     }
+    
+/**
+ * Called by EnigmaRotor to invert permutation to left-to-right.
+ *
+ * @param key The encryption key
+ * @return invertedKey The inverted encryption key
+ */
+
+    public String invertKey(String key)
+    {
+    	String invertedKey = "";
+    	
+    	for (char alphabetChar : EnigmaConstants.ALPHABET.toCharArray())
+    	{
+    		int index = key.indexOf(alphabetChar);
+    		char invertedChar = EnigmaConstants.ALPHABET.charAt(index);
+    		invertedKey += invertedChar;
+    	}
+    	
+    	return invertedKey;
+    }    
     
 /**
  * Called automatically when the Model is created.
@@ -155,52 +247,9 @@ public class EnigmaModel
     {
         EnigmaModel model = new EnigmaModel();
         EnigmaView view = new EnigmaView(model);
-        model.addView(view);
+        model.addView(view);        
     }
   
 }//end class EnigmaModel
 
-class EnigmaRotor 
-{
-	String permutation;
-	int offset;
-	
-/**
- * Initializes an EnigmaRotor object.
- *
- * @param rotorPermutation The permutation string used for encoding/decoding of the rotor.
- */
-	public EnigmaRotor(String rotorPermutation)
-	{
-		permutation = rotorPermutation;
-		offset = 0;
-	}
-	
-/**
- * Returns the rotor's offset value.
- */
-	public int getOffset()
-	{
-		return offset;
-	}
-	
-/**
- * Returns the rotor's permutation value;
- */
-	public String getPermutation()
-	{
-		return permutation;
-	}
-	
-/**
- * Advances the rotor by one. 
- */
-	public void advance()
-	{
-		offset++;
-		
-		if (offset > 26)
-			offset = 0;
-	}
-}
 
