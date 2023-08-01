@@ -35,12 +35,14 @@ import java.util.HashMap;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class EnigmaView extends JFrame 
 {
-		/* Private instance variables */
-	  private EnigmaModel model;
-	  private EnigmaCanvas canvas;
+	/* Private instance variables */
+    private EnigmaModel model;
+    private EnigmaCanvas canvas;
   
     public EnigmaView(EnigmaModel model) 
     {
@@ -50,6 +52,15 @@ public class EnigmaView extends JFrame
         setLayout(new BorderLayout());
         add(canvas, BorderLayout.CENTER);
         pack();
+        
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                EnigmaModel.fileManager.writeContentsToFile();
+                System.exit(0);
+            }
+        });
+        
         setVisible(true);
     }
 
@@ -246,7 +257,8 @@ class EnigmaCanvas extends JComponent implements MouseListener
             Rectangle2D rect = rotors.get(i);
             if (rect.contains(x, y))
             {
-                model.rotorClicked(i);
+                model.rotorClicked();
+                this.repaint();
                 return;
             }
         }//end for
